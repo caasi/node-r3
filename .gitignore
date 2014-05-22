@@ -1,0 +1,12 @@
+build
+.lock-wscript
+core
+
+.gdbinit
+.gdb_history
+
+._*
+
+r3/
+npm-debug.log
+*.swp
