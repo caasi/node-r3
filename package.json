@@ -1,0 +1,30 @@
+{
+  "name": "node-r3",
+  "version": "0.0.1",
+  "description": "a node binding for URL router c9s/r3",
+  "main": "r3.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "node-gyp rebuild"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/caasi/node-r3"
+  },
+  "keywords": [
+    "libr3",
+    "binding",
+    "router",
+    "native"
+  ],
+  "author": "caasi Huang",
+  "license": "MIT",
+  "gypfile": true,
+  "bugs": {
+    "url": "https://github.com/caasi/node-r3/issues"
+  },
+  "homepage": "https://github.com/caasi/node-r3",
+  "dependencies": {
+    "nan": "^1.2.0"
+  }
+}

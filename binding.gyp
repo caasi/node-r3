@@ -3,6 +3,9 @@
     {
       "target_name": "r3",
       "sources": ["./src/main.cc"],
+      "include_dirs": [
+        "<!(node -e \"require('nan')\")"
+      ],
       "link_settings": {
         "ldflags": [
           "-Wl,-rpath,/usr/local/lib",

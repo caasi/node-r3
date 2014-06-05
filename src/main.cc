@@ -1,5 +1,7 @@
 #include <node.h>
 #include <v8.h>
+#include <nan.h>
+#include <iostream>
 
 namespace r3 {
     extern "C" {
@@ -9,35 +11,35 @@ namespace r3 {
 
 using namespace v8;
 
-Handle<Value> treeCreate(const Arguments &args) {
-    HandleScope scope;
+NAN_WEAK_CALLBACK(cleanUp) {
+    int *parameter = data.GetParameter();
+    std::cout << "r3_tree_free(): " << *parameter << std::endl;
 
-    if (args.Length() < 1) {
-        ThrowException(Exception::TypeError(String::New("Wrong number of arguments.")));
-        return scope.Close(Undefined());
+    r3::node *n = (r3::node*)External::Unwrap(data.GetValue());
+    r3::r3_tree_free(n);
+
+    if ((*parameter)++ == 0) {
+        data.Revive();
+    } else {
+        delete parameter;
     }
-
-    return scope.Close(External::Wrap(r3::r3_tree_create(args[0]->IntegerValue())));
 }
 
-Handle<Value> treeFree(const Arguments &args) {
-    HandleScope scope;
+NAN_METHOD(createTree) {
+    NanScope();
 
-    if (args.Length() < 1) {
-        ThrowException(Exception::TypeError(String::New("Wrong number of arguments.")));
-        return scope.Close(Undefined());
-    }
+    int capacity = args[0]->Uint32Value();
+    r3::node* n = r3::r3_tree_create(capacity);
+    std::cout << "r3_tree_create(" << capacity << ");" << std::endl;
 
-    r3::r3_tree_free((r3::node*)External::Unwrap(args[0]));
+    int *parameter = new int(0);
 
-    return scope.Close(Undefined());
+    NanReturnValue(NanMakeWeakPersistent(External::Wrap(n), parameter, &cleanUp)->persistent);
 }
 
-void init(Handle<Object> target) {
-    target->Set(String::NewSymbol("treeCreate"),
-                FunctionTemplate::New(treeCreate)->GetFunction());
-    target->Set(String::NewSymbol("treeFree"),
-                FunctionTemplate::New(treeFree)->GetFunction());
+void init(Handle<Object> exports) {
+    exports->Set(NanNew<String>("createTree"),
+                 NanNew<FunctionTemplate>(createTree)->GetFunction());
 }
 
 NODE_MODULE(r3, init);
