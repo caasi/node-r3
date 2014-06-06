@@ -11,35 +11,47 @@ namespace r3 {
 
 using namespace v8;
 
-NAN_WEAK_CALLBACK(cleanUp) {
-    int *parameter = data.GetParameter();
-    std::cout << "r3_tree_free(): " << *parameter << std::endl;
+static Handle<FunctionTemplate> r3_template;
+static Handle<ObjectTemplate> r3_instance_template;
 
-    r3::node *n = (r3::node*)External::Unwrap(data.GetValue());
+void cleanUp(Persistent<Value> object, void *parameter) {
+    r3::node *n = static_cast<r3::node *>(parameter);
+
     r3::r3_tree_free(n);
+    std::cout << "r3_tree_free(): " << n << std::endl;
 
-    if ((*parameter)++ == 0) {
-        data.Revive();
-    } else {
-        delete parameter;
-    }
+    object.Dispose();
+    object.Clear();
 }
 
-NAN_METHOD(createTree) {
+NAN_METHOD(constructor) {
+    if (!args.IsConstructCall()) {
+        return ThrowException(String::New("Cannot call constructor as function"));
+    }
+
     NanScope();
 
     int capacity = args[0]->Uint32Value();
-    r3::node* n = r3::r3_tree_create(capacity);
+    r3::node *n = r3::r3_tree_create(capacity);
     std::cout << "r3_tree_create(" << capacity << ");" << std::endl;
 
-    int *parameter = new int(0);
+    Persistent<Object> instance = Persistent<Object>::New(r3_instance_template->NewInstance());
+    instance->SetInternalField(0, External::Wrap(n));
+    instance.MakeWeak(n, cleanUp);
 
-    NanReturnValue(NanMakeWeakPersistent(External::Wrap(n), parameter, &cleanUp)->persistent);
+    NanReturnValue(instance);
+
+    //int *parameter = new int(0);
+    //NanReturnValue(NanMakeWeakPersistent(External::Wrap(n), parameter, &cleanUp)->persistent);
 }
 
 void init(Handle<Object> exports) {
-    exports->Set(NanNew<String>("createTree"),
-                 NanNew<FunctionTemplate>(createTree)->GetFunction());
+    r3_template = FunctionTemplate::New();
+    r3_instance_template = r3_template->InstanceTemplate();
+    r3_instance_template->SetInternalFieldCount(1);
+
+    exports->Set(NanNew<String>("R3"),
+                 NanNew<FunctionTemplate>(constructor)->GetFunction());
 }
 
 NODE_MODULE(r3, init);
