@@ -4,7 +4,8 @@
   "description": "a node binding for URL router c9s/r3",
   "main": "r3.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "pretest": "node-gyp configure build",
+    "test": "node --expose-gc ./r3.js",
     "install": "node-gyp rebuild"
   },
   "repository": {

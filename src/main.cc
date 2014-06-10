@@ -11,14 +11,11 @@ namespace r3 {
 
 using namespace v8;
 
-void cleanUp(Persistent<Value> object, void *parameter) {
+NAN_WEAK_CALLBACK(cleanUp) {
     std::cout << "r3_tree_free() " << std::endl;
 
-    r3::node *n = static_cast<r3::node *>(parameter);
+    r3::node *n = static_cast<r3::node *>(data.GetParameter());
     r3::r3_tree_free(n);
-
-    object.Dispose();
-    object.Clear();
 }
 
 NAN_METHOD(constructor) {
@@ -35,11 +32,8 @@ NAN_METHOD(constructor) {
     Handle<ObjectTemplate> r3_template = ObjectTemplate::New();
     r3_template->SetInternalFieldCount(1);
 
-    Persistent<External> external_n = Persistent<External>::New(External::New(n));
-    external_n.MakeWeak(n, cleanUp);
-
     Local<Object> instance = r3_template->NewInstance();
-    instance->SetInternalField(0, external_n);
+    instance->SetInternalField(0, NanMakeWeakPersistent(instance, n, &cleanUp)->persistent);
 
     NanReturnValue(instance);
 }
