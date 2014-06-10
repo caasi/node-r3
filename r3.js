@@ -1,12 +1,16 @@
 var r3 = require("./build/Release/r3.node");
 
 function f() {
-  new r3.R3(10);
+  var n = new r3.R3(10);
+  n = null;
 };
 
 f();
 
-gc();
-gc();
-gc();
+function doGC() {
+  console.log("gc");
+  gc();
+};
+
+setInterval(doGC, 1000);
 

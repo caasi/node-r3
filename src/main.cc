@@ -11,14 +11,11 @@ namespace r3 {
 
 using namespace v8;
 
-static Handle<FunctionTemplate> r3_template;
-static Handle<ObjectTemplate> r3_instance_template;
-
 void cleanUp(Persistent<Value> object, void *parameter) {
-    r3::node *n = static_cast<r3::node *>(parameter);
+    std::cout << "r3_tree_free() " << std::endl;
 
+    r3::node *n = static_cast<r3::node *>(parameter);
     r3::r3_tree_free(n);
-    std::cout << "r3_tree_free(): " << n << std::endl;
 
     object.Dispose();
     object.Clear();
@@ -35,21 +32,19 @@ NAN_METHOD(constructor) {
     r3::node *n = r3::r3_tree_create(capacity);
     std::cout << "r3_tree_create(" << capacity << ");" << std::endl;
 
-    Persistent<Object> instance = Persistent<Object>::New(r3_instance_template->NewInstance());
-    instance->SetInternalField(0, External::Wrap(n));
-    instance.MakeWeak(n, cleanUp);
+    Handle<ObjectTemplate> r3_template = ObjectTemplate::New();
+    r3_template->SetInternalFieldCount(1);
+
+    Persistent<External> external_n = Persistent<External>::New(External::New(n));
+    external_n.MakeWeak(n, cleanUp);
+
+    Local<Object> instance = r3_template->NewInstance();
+    instance->SetInternalField(0, external_n);
 
     NanReturnValue(instance);
-
-    //int *parameter = new int(0);
-    //NanReturnValue(NanMakeWeakPersistent(External::Wrap(n), parameter, &cleanUp)->persistent);
 }
 
 void init(Handle<Object> exports) {
-    r3_template = FunctionTemplate::New();
-    r3_instance_template = r3_template->InstanceTemplate();
-    r3_instance_template->SetInternalFieldCount(1);
-
     exports->Set(NanNew<String>("R3"),
                  NanNew<FunctionTemplate>(constructor)->GetFunction());
 }
