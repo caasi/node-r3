@@ -12,10 +12,29 @@ namespace r3 {
 using namespace v8;
 
 NAN_WEAK_CALLBACK(cleanUp) {
-    std::cout << "r3_tree_free() " << std::endl;
-
     r3::node *n = static_cast<r3::node *>(data.GetParameter());
     r3::r3_tree_free(n);
+    std::cout << "r3_tree_free(n);" << std::endl;
+}
+
+NAN_METHOD(treeInsertPath) {
+    NanScope();
+
+    Local<Object> self = args.Holder();
+
+    Local<External> external = Local<External>::Cast(self->GetInternalField(0));
+    r3::node *n = static_cast<r3::node *>(external->Value());
+
+    const String::Utf8Value path(args[0]);
+
+    // what will happen after i free the tree?
+    Persistent<Value> data;
+    NanAssignPersistent(data, args[1]);
+
+    r3::r3_tree_insert_pathl(n, *path, path.length(), &data);
+    std::cout << "r3_tree_insert_path(n, \"" << *path << "\");" << std::endl;
+
+    NanReturnValue(self);
 }
 
 NAN_METHOD(constructor) {
@@ -33,7 +52,11 @@ NAN_METHOD(constructor) {
     r3_template->SetInternalFieldCount(1);
 
     Local<Object> instance = r3_template->NewInstance();
-    instance->SetInternalField(0, NanMakeWeakPersistent(instance, n, &cleanUp)->persistent);
+    instance->SetInternalField(0, NanNew<External>(n));
+    instance->Set(NanNew<String>("treeInsertPath"),
+                  NanNew<FunctionTemplate>(treeInsertPath)->GetFunction());
+
+    NanMakeWeakPersistent(instance, n, &cleanUp);
 
     NanReturnValue(instance);
 }
