@@ -13,6 +13,7 @@ using namespace v8;
 
 NAN_WEAK_CALLBACK(cleanUp) {
     r3::node *n = static_cast<r3::node *>(data.GetParameter());
+    // TODO: dispose any persistent data
     r3::r3_tree_free(n);
     std::cout << "r3_tree_free(n);" << std::endl;
 }
@@ -31,7 +32,7 @@ NAN_METHOD(treeInsertPath) {
     Persistent<Value> data;
     NanAssignPersistent(data, args[1]);
 
-    r3::r3_tree_insert_pathl(n, *path, path.length(), &data);
+    r3::r3_tree_insert_pathl(n, *path, path.length(), *data);
     std::cout << "r3_tree_insert_path(n, \"" << *path << "\");" << std::endl;
 
     NanReturnValue(self);
@@ -51,9 +52,30 @@ NAN_METHOD(treeCompile) {
     NanReturnValue(self);
 }
 
+NAN_METHOD(treeMatch) {
+    NanScope();
+
+    Local<Object> self = args.Holder();
+
+    Local<External> external = Local<External>::Cast(self->GetInternalField(0));
+    r3::node *n = static_cast<r3::node *>(external->Value());
+
+    const String::Utf8Value path(args[0]);
+
+    r3::node *matched = r3::r3_tree_matchl(n, *path, path.length(), NULL);
+    std::cout << "r3_tree_match(\"" << *path << "\");" << std::endl;
+
+    if (matched) {
+        Local<Value> data(reinterpret_cast<Value *>(matched->data));
+        NanReturnValue(data);
+    } else {
+        NanReturnNull();
+    }
+}
+
 NAN_METHOD(constructor) {
     if (!args.IsConstructCall()) {
-        return ThrowException(String::New("Cannot call constructor as function"));
+        NanThrowError("Cannot call constructor as function");
     }
 
     NanScope();
@@ -71,6 +93,8 @@ NAN_METHOD(constructor) {
                   NanNew<FunctionTemplate>(treeInsertPath)->GetFunction());
     instance->Set(NanNew<String>("treeCompile"),
                   NanNew<FunctionTemplate>(treeCompile)->GetFunction());
+    instance->Set(NanNew<String>("treeMatch"),
+                  NanNew<FunctionTemplate>(treeMatch)->GetFunction());
 
     NanMakeWeakPersistent(instance, n, &cleanUp);
 
