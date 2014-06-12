@@ -11,6 +11,7 @@ function f() {
   n.treeInsertPath("/foo/bar", route_data);
   n.treeInsertPath("/post/{id}", route_data);
   n.treeInsertPath("/user/{id:\\d+}", route_data);
+  n.treeCompile();
 
   n = null;
 };

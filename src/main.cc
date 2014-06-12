@@ -37,6 +37,20 @@ NAN_METHOD(treeInsertPath) {
     NanReturnValue(self);
 }
 
+NAN_METHOD(treeCompile) {
+    NanScope();
+
+    Local<Object> self = args.Holder();
+
+    Local<External> external = Local<External>::Cast(self->GetInternalField(0));
+    r3::node *n = static_cast<r3::node *>(external->Value());
+    char *errstr = NULL;
+    int err = r3::r3_tree_compile(n, &errstr);
+    std::cout << "r3_tree_compile();" << std::endl;
+
+    NanReturnValue(self);
+}
+
 NAN_METHOD(constructor) {
     if (!args.IsConstructCall()) {
         return ThrowException(String::New("Cannot call constructor as function"));
@@ -55,6 +69,8 @@ NAN_METHOD(constructor) {
     instance->SetInternalField(0, NanNew<External>(n));
     instance->Set(NanNew<String>("treeInsertPath"),
                   NanNew<FunctionTemplate>(treeInsertPath)->GetFunction());
+    instance->Set(NanNew<String>("treeCompile"),
+                  NanNew<FunctionTemplate>(treeCompile)->GetFunction());
 
     NanMakeWeakPersistent(instance, n, &cleanUp);
 
