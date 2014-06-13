@@ -30,8 +30,25 @@ r3::node *tree_find_data(r3::node *n, Local<Value> &data) {
 }
 */
 
+void tree_dispose_data(r3::node *n) {
+    unsigned int i;
+
+    if (!n) return;
+
+    r3::r3_tree_dump(n, 0);
+
+    // TODO: find out if leaking
+    Persistent<Value> data(reinterpret_cast<Value *>(n->data));
+    if (n) data.Dispose();
+
+    for (i = 0; i < n->edge_len; ++i) {
+        tree_dispose_data(n->edges[i]->child);
+    }
+}
+
 NAN_WEAK_CALLBACK(cleanUp) {
     r3::node *n = static_cast<r3::node *>(data.GetParameter());
+    tree_dispose_data(n);
     r3::r3_tree_free(n);
     std::cout << "r3_tree_free();" << std::endl;
 }
@@ -61,9 +78,9 @@ NAN_METHOD(treeInsertPath) {
 
     const String::Utf8Value path(args[0]);
 
-    // TODO: find out when to dipose this value
     Persistent<Value> data;
     NanAssignPersistent(data, args[1]);
+    std::cout << "raw data ptr: " << (void *)*data << std::endl;
 
     r3::r3_tree_insert_pathl(get_node(self), *path, path.length(), *data);
     std::cout << "r3_tree_insert_path(n, \"" << *path << "\");" << std::endl;
