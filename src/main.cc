@@ -4,18 +4,54 @@
 #include <iostream>
 
 namespace r3 {
-    extern "C" {
-        #include <r3/r3.h>
-    };
+    #include <r3/r3.h>
 }
 
 using namespace v8;
 
+/*
+r3::node *tree_find_data(r3::node *n, Local<Value> &data) {
+    unsigned int i;
+    r3::node *result = NULL;
+
+    if (!n) return NULL;
+
+    Local<Value> current(reinterpret_cast<Value *>(n->data));
+    std::cout << (void *)*data << std::endl;
+    std::cout << (void *)*current << std::endl;
+    if (current == data) return n;
+
+    for (i = 0; i < n->edge_len; ++i) {
+        result = tree_find_data(n->edges[i]->child, data);
+        if (result) return result;
+    }
+
+    return NULL;
+}
+*/
+
 NAN_WEAK_CALLBACK(cleanUp) {
     r3::node *n = static_cast<r3::node *>(data.GetParameter());
-    // TODO: dispose any persistent data
     r3::r3_tree_free(n);
-    std::cout << "r3_tree_free(n);" << std::endl;
+    std::cout << "r3_tree_free();" << std::endl;
+}
+
+/*
+NAN_WEAK_CALLBACK(keepPayloadDataAlive) {
+    r3::node *n = static_cast<r3::node *>(data.GetParameter());
+    Local<Value> payload = NanNew(data.GetCallbackInfo()->persistent);
+
+    if (tree_find_data(n, payload)) {
+        std::cout << "payload will be alive" << std::endl;
+        data.Revive();
+    } else {
+        std::cout << "payload will be gone" << std::endl;
+    }
+}
+*/
+r3::node *get_node(Local<Object> &self) {
+    Local<External> external = Local<External>::Cast(self->GetInternalField(0));
+    return static_cast<r3::node *>(external->Value());
 }
 
 NAN_METHOD(treeInsertPath) {
@@ -23,16 +59,13 @@ NAN_METHOD(treeInsertPath) {
 
     Local<Object> self = args.Holder();
 
-    Local<External> external = Local<External>::Cast(self->GetInternalField(0));
-    r3::node *n = static_cast<r3::node *>(external->Value());
-
     const String::Utf8Value path(args[0]);
 
-    // what will happen after i free the tree?
+    // TODO: find out when to dipose this value
     Persistent<Value> data;
     NanAssignPersistent(data, args[1]);
 
-    r3::r3_tree_insert_pathl(n, *path, path.length(), *data);
+    r3::r3_tree_insert_pathl(get_node(self), *path, path.length(), *data);
     std::cout << "r3_tree_insert_path(n, \"" << *path << "\");" << std::endl;
 
     NanReturnValue(self);
@@ -43,10 +76,8 @@ NAN_METHOD(treeCompile) {
 
     Local<Object> self = args.Holder();
 
-    Local<External> external = Local<External>::Cast(self->GetInternalField(0));
-    r3::node *n = static_cast<r3::node *>(external->Value());
     char *errstr = NULL;
-    int err = r3::r3_tree_compile(n, &errstr);
+    int err = r3::r3_tree_compile(get_node(self), &errstr);
     std::cout << "r3_tree_compile();" << std::endl;
 
     NanReturnValue(self);
@@ -57,12 +88,9 @@ NAN_METHOD(treeMatch) {
 
     Local<Object> self = args.Holder();
 
-    Local<External> external = Local<External>::Cast(self->GetInternalField(0));
-    r3::node *n = static_cast<r3::node *>(external->Value());
-
     const String::Utf8Value path(args[0]);
 
-    r3::node *matched = r3::r3_tree_matchl(n, *path, path.length(), NULL);
+    r3::node *matched = r3::r3_tree_matchl(get_node(self), *path, path.length(), NULL);
     std::cout << "r3_tree_match(\"" << *path << "\");" << std::endl;
 
     if (matched) {
