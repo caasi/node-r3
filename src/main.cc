@@ -39,7 +39,7 @@ void tree_dispose_data(r3::node *n) {
 
     // TODO: find out if leaking
     Persistent<Value> data(reinterpret_cast<Value *>(n->data));
-    if (n) data.Dispose();
+    if (n->endpoint) data.Dispose();
 
     for (i = 0; i < n->edge_len; ++i) {
         tree_dispose_data(n->edges[i]->child);
