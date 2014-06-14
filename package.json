@@ -6,6 +6,7 @@
   "scripts": {
     "pretest": "node-gyp configure build",
     "test": "node --expose-gc ./r3.js",
+    "test-verbose": "node --trace-gc --trace-gc-verbose --expose-gc ./r3.js",
     "install": "node-gyp rebuild"
   },
   "repository": {

@@ -55,7 +55,7 @@ void tree_dispose_data(r3::node *n) {
     }
 }
 
-NAN_WEAK_CALLBACK(cleanUp) {
+NAN_WEAK_CALLBACK(treeCleanUp) {
     r3::node *n = static_cast<r3::node *>(data.GetParameter());
     tree_dispose_data(n);
     r3::r3_tree_free(n);
@@ -74,11 +74,30 @@ NAN_METHOD(treeInsertPath) {
 
     const String::Utf8Value path(args[0]);
 
+    char *errstr = NULL;
 #ifdef NODE_R3_SAVE_RAW
-    r3::r3_tree_insert_pathl(get_node(self), *path, path.length(), ptr_from_value_raw(args[1]));
+    r3::node *result =
+        r3::r3_tree_insert_pathl_ex(
+            get_node(self),
+            *path, path.length(),
+            NULL,
+            ptr_from_value_raw(args[1]),
+            &errstr
+        );
 #else
-    r3::r3_tree_insert_pathl(get_node(self), *path, path.length(), ptr_from_value_persistent(args[1]));
+    r3::node *result =
+        r3::r3_tree_insert_pathl_ex(
+            get_node(self),
+            *path, path.length(),
+            NULL,
+            ptr_from_value_persistent(args[1]),
+            &errstr
+        );
 #endif
+    if (result == NULL) {
+        NanThrowError(errstr);
+        delete errstr;
+    }
     //std::cout << "r3_tree_insert_path(n, \"" << *path << "\");" << std::endl;
 
     NanReturnValue(self);
@@ -91,6 +110,10 @@ NAN_METHOD(treeCompile) {
 
     char *errstr = NULL;
     int err = r3::r3_tree_compile(get_node(self), &errstr);
+    if (err) {
+        NanThrowError(errstr);
+        delete errstr;
+    }
     //std::cout << "r3_tree_compile();" << std::endl;
 
     NanReturnValue(self);
@@ -118,7 +141,7 @@ NAN_METHOD(treeMatch) {
     }
 }
 
-NAN_METHOD(constructor) {
+NAN_METHOD(treeConstructor) {
     if (!args.IsConstructCall()) {
         NanThrowError("Cannot call constructor as function");
     }
@@ -134,21 +157,21 @@ NAN_METHOD(constructor) {
 
     Local<Object> instance = r3_template->NewInstance();
     instance->SetInternalField(0, NanNew<External>(n));
-    instance->Set(NanNew<String>("treeInsertPath"),
+    instance->Set(NanNew<String>("insert"),
                   NanNew<FunctionTemplate>(treeInsertPath)->GetFunction());
-    instance->Set(NanNew<String>("treeCompile"),
+    instance->Set(NanNew<String>("compile"),
                   NanNew<FunctionTemplate>(treeCompile)->GetFunction());
-    instance->Set(NanNew<String>("treeMatch"),
+    instance->Set(NanNew<String>("match"),
                   NanNew<FunctionTemplate>(treeMatch)->GetFunction());
 
-    NanMakeWeakPersistent(instance, n, &cleanUp);
+    NanMakeWeakPersistent(instance, n, &treeCleanUp);
 
     NanReturnValue(instance);
 }
 
 void init(Handle<Object> exports) {
-    exports->Set(NanNew<String>("R3"),
-                 NanNew<FunctionTemplate>(constructor)->GetFunction());
+    exports->Set(NanNew<String>("Tree"),
+                 NanNew<FunctionTemplate>(treeConstructor)->GetFunction());
 }
 
 NODE_MODULE(r3, init);
