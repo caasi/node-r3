@@ -9,14 +9,13 @@ namespace r3 {
 
 using namespace v8;
 
-// uncomment the following line if you dont want to save the raw pointer in r3
-//#define NODE_R3_SAVE_PERSISTENT
+#define NODE_R3_SAVE_RAW
 
-#ifndef NODE_R3_SAVE_PERSISTENT
+#ifdef NODE_R3_SAVE_RAW
 void *ptr_from_value_raw(const Local<Value> &value) {
     Persistent<Value> data;
     NanAssignPersistent(data, value);
-    std::cout << "raw data ptr: " << *data << std::endl;
+    //std::cout << "raw data ptr: " << *data << std::endl;
 
     return *data;
 }
@@ -24,7 +23,7 @@ void *ptr_from_value_raw(const Local<Value> &value) {
 void *ptr_from_value_persistent(const Local<Value> &value) {
     Persistent<Value> *data = new Persistent<Value>();
     NanAssignPersistent(*data, value);
-    std::cout << "persistent ptr: " << data << std::endl;
+    //std::cout << "persistent ptr: " << data << std::endl;
 
     return data;
 }
@@ -39,16 +38,16 @@ void tree_dispose_data(r3::node *n) {
 
     if (!n) return;
 
-    r3::r3_tree_dump(n, 0);
+    //r3::r3_tree_dump(n, 0);
 
     // TODO: find out if leaking
-#ifndef NODE_R3_SAVE_PERSISTENT
+#ifdef NODE_R3_SAVE_RAW
     Persistent<Value> data(reinterpret_cast<Value *>(n->data));
     if (n->endpoint) data.Dispose();
 #else
     Persistent<Value> *data = value_from_ptr_persistent(n->data);
-    if (n->endpoint) (*data).Dispose();
-    //delete data; // segmentation fault
+    if (n->endpoint) data->Dispose();
+    delete data;
 #endif
 
     for (i = 0; i < n->edge_len; ++i) {
@@ -60,7 +59,7 @@ NAN_WEAK_CALLBACK(cleanUp) {
     r3::node *n = static_cast<r3::node *>(data.GetParameter());
     tree_dispose_data(n);
     r3::r3_tree_free(n);
-    std::cout << "r3_tree_free();" << std::endl;
+    //std::cout << "r3_tree_free();" << std::endl;
 }
 
 r3::node *get_node(Local<Object> &self) {
@@ -75,12 +74,12 @@ NAN_METHOD(treeInsertPath) {
 
     const String::Utf8Value path(args[0]);
 
-#ifndef NODE_R3_SAVE_PERSISTENT
+#ifdef NODE_R3_SAVE_RAW
     r3::r3_tree_insert_pathl(get_node(self), *path, path.length(), ptr_from_value_raw(args[1]));
 #else
     r3::r3_tree_insert_pathl(get_node(self), *path, path.length(), ptr_from_value_persistent(args[1]));
 #endif
-    std::cout << "r3_tree_insert_path(n, \"" << *path << "\");" << std::endl;
+    //std::cout << "r3_tree_insert_path(n, \"" << *path << "\");" << std::endl;
 
     NanReturnValue(self);
 }
@@ -92,7 +91,7 @@ NAN_METHOD(treeCompile) {
 
     char *errstr = NULL;
     int err = r3::r3_tree_compile(get_node(self), &errstr);
-    std::cout << "r3_tree_compile();" << std::endl;
+    //std::cout << "r3_tree_compile();" << std::endl;
 
     NanReturnValue(self);
 }
@@ -105,10 +104,10 @@ NAN_METHOD(treeMatch) {
     const String::Utf8Value path(args[0]);
 
     r3::node *matched = r3::r3_tree_matchl(get_node(self), *path, path.length(), NULL);
-    std::cout << "r3_tree_match(\"" << *path << "\");" << std::endl;
+    //std::cout << "r3_tree_match(\"" << *path << "\");" << std::endl;
 
     if (matched) {
-#ifndef NODE_R3_SAVE_PERSISTENT
+#ifdef NODE_R3_SAVE_RAW
         Local<Value> data(reinterpret_cast<Value *>(matched->data));
 #else
         Local<Value> data = NanNew(*reinterpret_cast<Persistent<Value> *>(matched->data));
@@ -128,7 +127,7 @@ NAN_METHOD(constructor) {
 
     int capacity = args[0]->Uint32Value();
     r3::node *n = r3::r3_tree_create(capacity);
-    std::cout << "r3_tree_create(" << capacity << ");" << std::endl;
+    //std::cout << "r3_tree_create(" << capacity << ");" << std::endl;
 
     Handle<ObjectTemplate> r3_template = ObjectTemplate::New();
     r3_template->SetInternalFieldCount(1);
