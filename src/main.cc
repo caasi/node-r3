@@ -9,26 +9,30 @@ namespace r3 {
 
 using namespace v8;
 
-/*
-r3::node *tree_find_data(r3::node *n, Local<Value> &data) {
-    unsigned int i;
-    r3::node *result = NULL;
+// uncomment the following line if you dont want to save the raw pointer in r3
+//#define NODE_R3_SAVE_PERSISTENT
 
-    if (!n) return NULL;
+#ifndef NODE_R3_SAVE_PERSISTENT
+void *ptr_from_value_raw(const Local<Value> &value) {
+    Persistent<Value> data;
+    NanAssignPersistent(data, value);
+    std::cout << "raw data ptr: " << *data << std::endl;
 
-    Local<Value> current(reinterpret_cast<Value *>(n->data));
-    std::cout << (void *)*data << std::endl;
-    std::cout << (void *)*current << std::endl;
-    if (current == data) return n;
-
-    for (i = 0; i < n->edge_len; ++i) {
-        result = tree_find_data(n->edges[i]->child, data);
-        if (result) return result;
-    }
-
-    return NULL;
+    return *data;
 }
-*/
+#else
+void *ptr_from_value_persistent(const Local<Value> &value) {
+    Persistent<Value> *data = new Persistent<Value>();
+    NanAssignPersistent(*data, value);
+    std::cout << "persistent ptr: " << data << std::endl;
+
+    return data;
+}
+
+Persistent<Value> *value_from_ptr_persistent(void *ptr) {
+    return reinterpret_cast<Persistent<Value> *>(ptr);
+}
+#endif
 
 void tree_dispose_data(r3::node *n) {
     unsigned int i;
@@ -38,8 +42,14 @@ void tree_dispose_data(r3::node *n) {
     r3::r3_tree_dump(n, 0);
 
     // TODO: find out if leaking
+#ifndef NODE_R3_SAVE_PERSISTENT
     Persistent<Value> data(reinterpret_cast<Value *>(n->data));
     if (n->endpoint) data.Dispose();
+#else
+    Persistent<Value> *data = value_from_ptr_persistent(n->data);
+    if (n->endpoint) (*data).Dispose();
+    //delete data; // segmentation fault
+#endif
 
     for (i = 0; i < n->edge_len; ++i) {
         tree_dispose_data(n->edges[i]->child);
@@ -53,19 +63,6 @@ NAN_WEAK_CALLBACK(cleanUp) {
     std::cout << "r3_tree_free();" << std::endl;
 }
 
-/*
-NAN_WEAK_CALLBACK(keepPayloadDataAlive) {
-    r3::node *n = static_cast<r3::node *>(data.GetParameter());
-    Local<Value> payload = NanNew(data.GetCallbackInfo()->persistent);
-
-    if (tree_find_data(n, payload)) {
-        std::cout << "payload will be alive" << std::endl;
-        data.Revive();
-    } else {
-        std::cout << "payload will be gone" << std::endl;
-    }
-}
-*/
 r3::node *get_node(Local<Object> &self) {
     Local<External> external = Local<External>::Cast(self->GetInternalField(0));
     return static_cast<r3::node *>(external->Value());
@@ -78,11 +75,11 @@ NAN_METHOD(treeInsertPath) {
 
     const String::Utf8Value path(args[0]);
 
-    Persistent<Value> data;
-    NanAssignPersistent(data, args[1]);
-    std::cout << "raw data ptr: " << (void *)*data << std::endl;
-
-    r3::r3_tree_insert_pathl(get_node(self), *path, path.length(), *data);
+#ifndef NODE_R3_SAVE_PERSISTENT
+    r3::r3_tree_insert_pathl(get_node(self), *path, path.length(), ptr_from_value_raw(args[1]));
+#else
+    r3::r3_tree_insert_pathl(get_node(self), *path, path.length(), ptr_from_value_persistent(args[1]));
+#endif
     std::cout << "r3_tree_insert_path(n, \"" << *path << "\");" << std::endl;
 
     NanReturnValue(self);
@@ -111,7 +108,11 @@ NAN_METHOD(treeMatch) {
     std::cout << "r3_tree_match(\"" << *path << "\");" << std::endl;
 
     if (matched) {
+#ifndef NODE_R3_SAVE_PERSISTENT
         Local<Value> data(reinterpret_cast<Value *>(matched->data));
+#else
+        Local<Value> data = NanNew(*reinterpret_cast<Persistent<Value> *>(matched->data));
+#endif
         NanReturnValue(data);
     } else {
         NanReturnNull();
