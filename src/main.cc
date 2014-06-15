@@ -76,6 +76,7 @@ NAN_METHOD(treeInsertPath) {
 
     Local<Object> self = args.Holder();
 
+    // path will be copied by zstrndup() after instertion
     const String::Utf8Value path(args[0]);
 
     char *errstr = NULL;
@@ -253,14 +254,13 @@ NAN_METHOD(matchEntryConstructor) {
 
     NanScope();
 
-    const String::Utf8Value entry_path(args[0]);
+    // path will not be copied after creation
+    const String::Utf8Value path(args[0]);
 
-    r3::match_entry *e = r3::match_entry_createl(*entry_path, entry_path.length());
-    //std::cout << "match_entry_create(" << *path << ");" << std::endl;
+    r3::match_entry *e = r3::match_entry_createl(strndup(*path, path.length()), path.length());
+    //std::cout << "match_entry_create(\"" << *path << "\");" << std::endl;
     // TODO: should remove after match_entry_createl() changed
     e->request_method = METHOD_GET;
-    e->path = strndup("", 0);
-    e->path_len = 0;
     e->host = strndup("", 0);
     e->host_len = 0;
     e->remote_addr = strndup("", 0);

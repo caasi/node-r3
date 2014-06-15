@@ -13,11 +13,11 @@ function f() {
   n = new r3.Tree(10);
   console.log(n);
 
-  e = new r3.MatchEntry('/');
+  e = new r3.MatchEntry('/foo');
   console.log(e);
 
   e.requestMethod = r3.METHOD_GET | r3.METHOD_POST;
-  e.path = e.path + "/";
+  e.path = e.path + "/bar";
   e.host = "localhost";
   e.remoteAddress = "192.168.0.1";
   console.log(e);
