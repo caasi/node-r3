@@ -11,9 +11,16 @@ function f() {
   data = "o";
 
   n = new r3.Tree(10);
-  e = new r3.MatchEntry('/');
+  console.log(n);
 
-  console.log(e, e.requestMethod);
+  e = new r3.MatchEntry('/');
+  console.log(e);
+
+  e.requestMethod = r3.METHOD_GET | r3.METHOD_POST;
+  e.path = e.path + "/";
+  e.host = "localhost";
+  e.remoteAddress = "192.168.0.1";
+  console.log(e);
 
   for (i = 0; i < count; ++i) {
     n.insert(path, data);
@@ -30,7 +37,7 @@ function f() {
   }
 };
 
-for (j = 0; j < 128; ++j) {
+for (j = 0; j < 1; ++j) {
   f();
 }
 

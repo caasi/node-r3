@@ -1,6 +1,7 @@
 #include <node.h>
 #include <v8.h>
 #include <nan.h>
+#include <cstring>
 #include <iostream>
 
 namespace r3 {
@@ -62,7 +63,7 @@ NAN_WEAK_CALLBACK(treeCleanUp) {
     r3::node *n = static_cast<r3::node *>(data.GetParameter());
     tree_dispose_data(n);
     r3::r3_tree_free(n);
-    std::cout << "r3_tree_free();" << std::endl;
+    //std::cout << "r3_tree_free();" << std::endl;
 }
 
 r3::node *get_node(const Local<Object> &self) {
@@ -153,7 +154,7 @@ NAN_METHOD(treeConstructor) {
 
     int capacity = args[0]->Uint32Value();
     r3::node *n = r3::r3_tree_create(capacity);
-    std::cout << "r3_tree_create(" << capacity << ");" << std::endl;
+    //std::cout << "r3_tree_create(" << capacity << ");" << std::endl;
 
     Handle<ObjectTemplate> tree_template = ObjectTemplate::New();
     tree_template->SetInternalFieldCount(1);
@@ -181,20 +182,68 @@ r3::match_entry *get_entry(const Local<Object> &self) {
 }
 
 NAN_GETTER(entryGetMethod) {
+    NanScope();
+
     r3::match_entry *e = get_entry(args.Holder());
 
-    return NanNew<Integer>(e->request_method);
+    NanReturnValue(NanNew<Integer>(e->request_method));
 }
 
 NAN_SETTER(entrySetMethod) {
+    NanScope();
+
     r3::match_entry *e = get_entry(args.Holder());
     e->request_method = value->ToInteger()->Value();
+}
+
+NAN_GETTER(entryGetString) {
+    NanScope();
+
+    r3::match_entry *e = get_entry(args.Holder());
+
+    String::Utf8Value p(property);
+
+    if (0 == strncmp("path", *p, p.length())) {
+        NanReturnValue(NanNew<String>(e->path, e->path_len));
+    }
+    if (0 == strncmp("host", *p, p.length())) {
+        NanReturnValue(NanNew<String>(e->host, e->host_len));
+    }
+    if (0 == strncmp("remoteAddress", *p, p.length())) {
+        NanReturnValue(NanNew<String>(e->remote_addr, e->remote_addr_len));
+    }
+}
+
+NAN_SETTER(entrySetString) {
+    NanScope();
+
+    Local<Object> self = args.Holder();
+
+    r3::match_entry *e = get_entry(self);
+    String::Utf8Value p(property);
+    String::Utf8Value v(value);
+
+    if (0 == strncmp("path", *p, p.length())) {
+        if (e->path) delete e->path;
+        e->path = strndup(*v, v.length());
+        e->path_len = v.length();
+    }
+    if (0 == strncmp("host", *p, p.length())) {
+        if (e->host) delete e->host;
+        e->host = strndup(*v, v.length());
+        e->host_len = v.length();
+    }
+    if (0 == strncmp("remoteAddress", *p, p.length())) {
+        if (e->remote_addr) delete e->remote_addr;
+        e->remote_addr = strndup(*v, v.length());
+        e->remote_addr_len = v.length();
+    }
 }
 
 NAN_WEAK_CALLBACK(entryCleanUp) {
     r3::match_entry *e = static_cast<r3::match_entry *>(data.GetParameter());
     r3::match_entry_free(e);
-    std::cout << "match_entry_free();" << std::endl;
+    //std::cout << "match_entry_free();" << std::endl;
 }
 
 NAN_METHOD(matchEntryConstructor) {
@@ -204,11 +253,18 @@ NAN_METHOD(matchEntryConstructor) {
 
     NanScope();
 
-    const String::Utf8Value path(args[0]);
-    r3::match_entry *e = r3::match_entry_createl(*path, path.length());
+    const String::Utf8Value entry_path(args[0]);
+
+    r3::match_entry *e = r3::match_entry_createl(*entry_path, entry_path.length());
+    //std::cout << "match_entry_create(" << *path << ");" << std::endl;
     // TODO: should remove after match_entry_createl() changed
     e->request_method = METHOD_GET;
-    std::cout << "match_entry_create(" << *path << ");" << std::endl;
+    e->path = strndup("", 0);
+    e->path_len = 0;
+    e->host = strndup("", 0);
+    e->host_len = 0;
+    e->remote_addr = strndup("", 0);
+    e->remote_addr_len = 0;
 
     Handle<ObjectTemplate> entry_template = ObjectTemplate::New();
     entry_template->SetInternalFieldCount(1);
@@ -216,6 +272,21 @@ NAN_METHOD(matchEntryConstructor) {
         NanNew<String>("requestMethod"),
         entryGetMethod,
         entrySetMethod
+    );
+    entry_template->SetAccessor(
+        NanNew<String>("path"),
+        entryGetString,
+        entrySetString
+    );
+    entry_template->SetAccessor(
+        NanNew<String>("host"),
+        entryGetString,
+        entrySetString
+    );
+    entry_template->SetAccessor(
+        NanNew<String>("remoteAddress"),
+        entryGetString,
+        entrySetString
     );
 
     Local<Object> instance = entry_template->NewInstance();
