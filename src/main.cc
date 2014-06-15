@@ -65,7 +65,7 @@ NAN_WEAK_CALLBACK(treeCleanUp) {
     std::cout << "r3_tree_free();" << std::endl;
 }
 
-r3::node *get_node(Local<Object> &self) {
+r3::node *get_node(const Local<Object> &self) {
     Local<External> external = Local<External>::Cast(self->GetInternalField(0));
     return static_cast<r3::node *>(external->Value());
 }
@@ -160,20 +160,6 @@ NAN_METHOD(treeConstructor) {
 
     Local<Object> instance = tree_template->NewInstance();
     instance->SetInternalField(0, NanNew<External>(n));
-    instance->Set(NanNew<String>("METHOD_GET"),
-                  NanNew<Integer>(METHOD_GET));
-    instance->Set(NanNew<String>("METHOD_POST"),
-                  NanNew<Integer>(METHOD_POST));
-    instance->Set(NanNew<String>("METHOD_PUT"),
-                  NanNew<Integer>(METHOD_PUT));
-    instance->Set(NanNew<String>("METHOD_DELETE"),
-                  NanNew<Integer>(METHOD_DELETE));
-    instance->Set(NanNew<String>("METHOD_PATCH"),
-                  NanNew<Integer>(METHOD_PATCH));
-    instance->Set(NanNew<String>("METHOD_HEAD"),
-                  NanNew<Integer>(METHOD_HEAD));
-    instance->Set(NanNew<String>("METHOD_OPTIONS"),
-                  NanNew<Integer>(METHOD_OPTIONS));
     instance->Set(NanNew<String>("insert"),
                   NanNew<FunctionTemplate>(treeInsertPath)->GetFunction());
     instance->Set(NanNew<String>("compile"),
@@ -189,6 +175,22 @@ NAN_METHOD(treeConstructor) {
 /***
  * About MatchEntry
  */
+r3::match_entry *get_entry(const Local<Object> &self) {
+    Local<External> external = Local<External>::Cast(self->GetInternalField(0));
+    return static_cast<r3::match_entry *>(external->Value());
+}
+
+NAN_GETTER(entryGetMethod) {
+    r3::match_entry *e = get_entry(args.Holder());
+
+    return NanNew<Integer>(e->request_method);
+}
+
+NAN_SETTER(entrySetMethod) {
+    r3::match_entry *e = get_entry(args.Holder());
+    e->request_method = value->ToInteger()->Value();
+}
+
 NAN_WEAK_CALLBACK(entryCleanUp) {
     r3::match_entry *e = static_cast<r3::match_entry *>(data.GetParameter());
     r3::match_entry_free(e);
@@ -204,10 +206,17 @@ NAN_METHOD(matchEntryConstructor) {
 
     const String::Utf8Value path(args[0]);
     r3::match_entry *e = r3::match_entry_createl(*path, path.length());
+    // TODO: should remove after match_entry_createl() changed
+    e->request_method = METHOD_GET;
     std::cout << "match_entry_create(" << *path << ");" << std::endl;
 
     Handle<ObjectTemplate> entry_template = ObjectTemplate::New();
     entry_template->SetInternalFieldCount(1);
+    entry_template->SetAccessor(
+        NanNew<String>("requestMethod"),
+        entryGetMethod,
+        entrySetMethod
+    );
 
     Local<Object> instance = entry_template->NewInstance();
     instance->SetInternalField(0, NanNew<External>(e));
@@ -218,6 +227,20 @@ NAN_METHOD(matchEntryConstructor) {
 }
 
 void init(Handle<Object> exports) {
+    exports->Set(NanNew<String>("METHOD_GET"),
+                 NanNew<Integer>(METHOD_GET));
+    exports->Set(NanNew<String>("METHOD_POST"),
+                 NanNew<Integer>(METHOD_POST));
+    exports->Set(NanNew<String>("METHOD_PUT"),
+                 NanNew<Integer>(METHOD_PUT));
+    exports->Set(NanNew<String>("METHOD_DELETE"),
+                 NanNew<Integer>(METHOD_DELETE));
+    exports->Set(NanNew<String>("METHOD_PATCH"),
+                 NanNew<Integer>(METHOD_PATCH));
+    exports->Set(NanNew<String>("METHOD_HEAD"),
+                 NanNew<Integer>(METHOD_HEAD));
+    exports->Set(NanNew<String>("METHOD_OPTIONS"),
+                 NanNew<Integer>(METHOD_OPTIONS));
     exports->Set(NanNew<String>("Tree"),
                  NanNew<FunctionTemplate>(treeConstructor)->GetFunction());
     exports->Set(NanNew<String>("MatchEntry"),

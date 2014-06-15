@@ -1,6 +1,8 @@
 var r3 = require("./build/Release/r3.node");
 var j;
 
+console.log(r3);
+
 function f() {
   var path, data, n, i;
   var count = 256
@@ -10,6 +12,8 @@ function f() {
 
   n = new r3.Tree(10);
   e = new r3.MatchEntry('/');
+
+  console.log(e, e.requestMethod);
 
   for (i = 0; i < count; ++i) {
     n.insert(path, data);
