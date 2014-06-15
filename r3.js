@@ -9,6 +9,7 @@ function f() {
   data = "o";
 
   n = new r3.Tree(10);
+  e = new r3.MatchEntry('/');
 
   for (i = 0; i < count; ++i) {
     n.insert(path, data);

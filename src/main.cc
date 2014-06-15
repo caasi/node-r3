@@ -9,6 +9,9 @@ namespace r3 {
 
 using namespace v8;
 
+/***
+ * About r3 node/tree
+ */
 #define NODE_R3_SAVE_RAW
 
 #ifdef NODE_R3_SAVE_RAW
@@ -59,7 +62,7 @@ NAN_WEAK_CALLBACK(treeCleanUp) {
     r3::node *n = static_cast<r3::node *>(data.GetParameter());
     tree_dispose_data(n);
     r3::r3_tree_free(n);
-    //std::cout << "r3_tree_free();" << std::endl;
+    std::cout << "r3_tree_free();" << std::endl;
 }
 
 r3::node *get_node(Local<Object> &self) {
@@ -143,20 +146,34 @@ NAN_METHOD(treeMatch) {
 
 NAN_METHOD(treeConstructor) {
     if (!args.IsConstructCall()) {
-        NanThrowError("Cannot call constructor as function");
+        NanThrowError("Cannot call Tree constructor as function");
     }
 
     NanScope();
 
     int capacity = args[0]->Uint32Value();
     r3::node *n = r3::r3_tree_create(capacity);
-    //std::cout << "r3_tree_create(" << capacity << ");" << std::endl;
+    std::cout << "r3_tree_create(" << capacity << ");" << std::endl;
 
-    Handle<ObjectTemplate> r3_template = ObjectTemplate::New();
-    r3_template->SetInternalFieldCount(1);
+    Handle<ObjectTemplate> tree_template = ObjectTemplate::New();
+    tree_template->SetInternalFieldCount(1);
 
-    Local<Object> instance = r3_template->NewInstance();
+    Local<Object> instance = tree_template->NewInstance();
     instance->SetInternalField(0, NanNew<External>(n));
+    instance->Set(NanNew<String>("METHOD_GET"),
+                  NanNew<Integer>(METHOD_GET));
+    instance->Set(NanNew<String>("METHOD_POST"),
+                  NanNew<Integer>(METHOD_POST));
+    instance->Set(NanNew<String>("METHOD_PUT"),
+                  NanNew<Integer>(METHOD_PUT));
+    instance->Set(NanNew<String>("METHOD_DELETE"),
+                  NanNew<Integer>(METHOD_DELETE));
+    instance->Set(NanNew<String>("METHOD_PATCH"),
+                  NanNew<Integer>(METHOD_PATCH));
+    instance->Set(NanNew<String>("METHOD_HEAD"),
+                  NanNew<Integer>(METHOD_HEAD));
+    instance->Set(NanNew<String>("METHOD_OPTIONS"),
+                  NanNew<Integer>(METHOD_OPTIONS));
     instance->Set(NanNew<String>("insert"),
                   NanNew<FunctionTemplate>(treeInsertPath)->GetFunction());
     instance->Set(NanNew<String>("compile"),
@@ -169,9 +186,42 @@ NAN_METHOD(treeConstructor) {
     NanReturnValue(instance);
 }
 
+/***
+ * About MatchEntry
+ */
+NAN_WEAK_CALLBACK(entryCleanUp) {
+    r3::match_entry *e = static_cast<r3::match_entry *>(data.GetParameter());
+    r3::match_entry_free(e);
+    std::cout << "match_entry_free();" << std::endl;
+}
+
+NAN_METHOD(matchEntryConstructor) {
+    if (!args.IsConstructCall()) {
+        NanThrowError("Cannot call MatchEntry constructor as function");
+    }
+
+    NanScope();
+
+    const String::Utf8Value path(args[0]);
+    r3::match_entry *e = r3::match_entry_createl(*path, path.length());
+    std::cout << "match_entry_create(" << *path << ");" << std::endl;
+
+    Handle<ObjectTemplate> entry_template = ObjectTemplate::New();
+    entry_template->SetInternalFieldCount(1);
+
+    Local<Object> instance = entry_template->NewInstance();
+    instance->SetInternalField(0, NanNew<External>(e));
+
+    NanMakeWeakPersistent(instance, e, &entryCleanUp);
+
+    NanReturnValue(instance);
+}
+
 void init(Handle<Object> exports) {
     exports->Set(NanNew<String>("Tree"),
                  NanNew<FunctionTemplate>(treeConstructor)->GetFunction());
+    exports->Set(NanNew<String>("MatchEntry"),
+                 NanNew<FunctionTemplate>(matchEntryConstructor)->GetFunction());
 }
 
 NODE_MODULE(r3, init);
