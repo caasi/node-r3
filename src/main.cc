@@ -207,8 +207,13 @@ NAN_METHOD(treeMatchRoute) {
     r3::route *matched = r3::r3_tree_match_route(get_node(args.Holder()), get_entry(entry));
 
     if (matched) {
-        // FIXME: should return Route
-        NanReturnValue(NanTrue());
+#ifdef NODE_R3_SAVE_RAW
+        Local<Value> data(reinterpret_cast<Value *>(matched->data));
+#else
+        Local<Value> data = NanNew(*reinterpret_cast<Persistent<Value> *>(matched->data));
+#endif
+        // FIXME: should I return Route?
+        NanReturnValue(data);
     } else {
         NanReturnNull();
     }

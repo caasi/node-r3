@@ -2,11 +2,11 @@
   "name": "node-r3",
   "version": "0.0.1",
   "description": "a node binding for URL router c9s/r3",
-  "main": "r3.js",
+  "main": "build/Release/r3.node",
   "scripts": {
     "pretest": "node-gyp configure build",
-    "test": "node --expose-gc ./r3.js",
-    "test-verbose": "node --trace-gc --trace-gc-verbose --expose-gc ./r3.js",
+    "test": "node_modules/.bin/lsc -cp test/test.ls | node_modules/.bin/mocha",
+    "benchmark": "node_modules/.bin/lsc benchmark/benchmark.ls",
     "install": "node-gyp rebuild"
   },
   "repository": {
@@ -28,5 +28,10 @@
   "homepage": "https://github.com/caasi/node-r3",
   "dependencies": {
     "nan": "^1.2.0"
+  },
+  "devDependencies": {
+    "LiveScript": "^1.2.0",
+    "b": "^2.0.1",
+    "mocha": "^1.20.1"
   }
 }
