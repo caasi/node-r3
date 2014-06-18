@@ -13,17 +13,17 @@ function f() {
   n = new r3.Tree(10);
   console.log(n);
 
-  e = new r3.MatchEntry('/foo');
+  e = new r3.MatchEntry('/o');
   console.log(e);
 
   e.requestMethod = r3.METHOD_GET | r3.METHOD_POST;
-  e.path = e.path + "/bar";
   e.host = "localhost";
   e.remoteAddress = "192.168.0.1";
   console.log(e);
 
   for (i = 0; i < count; ++i) {
     n.insert(path, data);
+    n.insertRoute(path, r3.METHOD_GET | r3.METHOD_POST, data);
     path += "/o";
     data += "o";
   }
@@ -33,7 +33,9 @@ function f() {
   path = "/o";
   for (i = 0; i < count; ++i) {
     if (!n.match("/o")) throw new Error("path not found");
+    //if (!n.matchRoute("/o")) throw new Error("match entry not found");
     path += "/o";
+    e.path += "/o";
   }
 };
 

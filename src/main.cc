@@ -108,6 +108,45 @@ NAN_METHOD(treeInsertPath) {
     NanReturnValue(self);
 }
 
+NAN_METHOD(treeInsertRoute) {
+    NanScope();
+
+    Local<Object> self = args.Holder();
+
+    int method = args[0].As<Integer>()->Value();
+    const String::Utf8Value path(args[1]);
+
+    char *errstr = NULL;
+#ifdef NODE_R3_SAVE_RAW
+    r3::route *result =
+        r3::r3_tree_insert_routel_ex(
+            get_node(self),
+            method,
+            *path, path.length(),
+            ptr_from_value_raw(args[1]),
+            &errstr
+        );
+#else
+    r3::route *result =
+        r3::r3_tree_insert_routel_ex(
+            get_node(self),
+            method,
+            *path, path.length(),
+            ptr_from_value_persistent(args[1]),
+            &errstr
+        );
+#endif
+    if (result == NULL) {
+        NanThrowError(errstr);
+        delete errstr;
+    }
+    //std::cout << "r3_tree_insert_route(n, " << method << ", \"" << *path << "\");" << std::endl;
+
+    // FIXME: r3_tree_insert_routel_ex() gives me route*,
+    // maybe I should not return self.
+    NanReturnValue(self);
+}
+
 NAN_METHOD(treeCompile) {
     NanScope();
 
@@ -164,6 +203,8 @@ NAN_METHOD(treeConstructor) {
     instance->SetInternalField(0, NanNew<External>(n));
     instance->Set(NanNew<String>("insert"),
                   NanNew<FunctionTemplate>(treeInsertPath)->GetFunction());
+    instance->Set(NanNew<String>("insertRoute"),
+                  NanNew<FunctionTemplate>(treeInsertRoute)->GetFunction());
     instance->Set(NanNew<String>("compile"),
                   NanNew<FunctionTemplate>(treeCompile)->GetFunction());
     instance->Set(NanNew<String>("match"),
