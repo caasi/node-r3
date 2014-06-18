@@ -23,7 +23,7 @@ function f() {
 
   for (i = 0; i < count; ++i) {
     n.insert(path, data);
-    n.insertRoute(path, r3.METHOD_GET | r3.METHOD_POST, data);
+    n.insertRoute(r3.METHOD_GET | r3.METHOD_POST, path, data);
     path += "/o";
     data += "o";
   }
@@ -33,7 +33,7 @@ function f() {
   path = "/o";
   for (i = 0; i < count; ++i) {
     if (!n.match("/o")) throw new Error("path not found");
-    //if (!n.matchRoute("/o")) throw new Error("match entry not found");
+    if (!n.matchRoute(e)) throw new Error("match entry not found");
     path += "/o";
     e.path += "/o";
   }

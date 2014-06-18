@@ -10,6 +10,9 @@ namespace r3 {
 
 using namespace v8;
 
+r3::node        *get_node (const Local<Object> &self);
+r3::match_entry *get_entry(const Local<Object> &self);
+
 /***
  * About r3 node/tree
  */
@@ -113,7 +116,7 @@ NAN_METHOD(treeInsertRoute) {
 
     Local<Object> self = args.Holder();
 
-    int method = args[0].As<Integer>()->Value();
+    int method = args[0]->IntegerValue();
     const String::Utf8Value path(args[1]);
 
     char *errstr = NULL;
@@ -185,6 +188,32 @@ NAN_METHOD(treeMatch) {
     }
 }
 
+NAN_METHOD(treeMatchRoute) {
+    NanScope();
+
+    Local<Object> entry = args[0].As<Object>();
+
+    // quack! quack!
+    // TODO: create match_entry if entry is a JSON Object
+    if (
+        !entry->HasOwnProperty(NanNew<String>("requestMethod")) ||
+        !entry->HasOwnProperty(NanNew<String>("path")) ||
+        !entry->HasOwnProperty(NanNew<String>("host")) ||
+        !entry->HasOwnProperty(NanNew<String>("remoteAddress"))
+    ) {
+        NanThrowError("Cannot call MatchEntry constructor as function");
+    }
+
+    r3::route *matched = r3::r3_tree_match_route(get_node(args.Holder()), get_entry(entry));
+
+    if (matched) {
+        // FIXME: should return Route
+        NanReturnValue(NanTrue());
+    } else {
+        NanReturnNull();
+    }
+}
+
 NAN_METHOD(treeConstructor) {
     if (!args.IsConstructCall()) {
         NanThrowError("Cannot call Tree constructor as function");
@@ -209,6 +238,8 @@ NAN_METHOD(treeConstructor) {
                   NanNew<FunctionTemplate>(treeCompile)->GetFunction());
     instance->Set(NanNew<String>("match"),
                   NanNew<FunctionTemplate>(treeMatch)->GetFunction());
+    instance->Set(NanNew<String>("matchRoute"),
+                  NanNew<FunctionTemplate>(treeMatchRoute)->GetFunction());
 
     NanMakeWeakPersistent(instance, n, &treeCleanUp);
 
