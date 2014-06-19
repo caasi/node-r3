@@ -1,6 +1,6 @@
 {
   "name": "node-libr3",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "a node binding for URL router c9s/r3",
   "main": "build/Release/r3.node",
   "scripts": {

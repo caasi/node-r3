@@ -17,7 +17,8 @@ r3::match_entry *valid_match_entry_from_v8_obj(const Local<Object> &self);
 /***
  * About r3 node/tree
  */
-#define NODE_R3_SAVE_RAW
+// operator* and constructors for T* will not work on Node.js 0.11 / V8 3.24
+//#define NODE_R3_SAVE_RAW
 
 #ifdef NODE_R3_SAVE_RAW
 void *ptr_from_value_raw(const Local<Value> &value) {
@@ -25,7 +26,7 @@ void *ptr_from_value_raw(const Local<Value> &value) {
     NanAssignPersistent(data, value);
     //std::cout << "raw data ptr: " << *data << std::endl;
 
-    return *data;
+    return *value;
 }
 #else
 void *ptr_from_value_persistent(const Local<Value> &value) {
@@ -51,10 +52,10 @@ void tree_dispose_data(r3::node *n) {
     // TODO: find out if leaking
 #ifdef NODE_R3_SAVE_RAW
     Persistent<Value> data(reinterpret_cast<Value *>(n->data));
-    if (n->endpoint) data.Dispose();
+    if (n->endpoint) NanDisposePersistent(data);
 #else
     Persistent<Value> *data = value_from_ptr_persistent(n->data);
-    if (n->endpoint) data->Dispose();
+    if (n->endpoint) NanDisposePersistent(*data);
     delete data;
 #endif
 
