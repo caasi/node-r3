@@ -1,5 +1,5 @@
 {
-  "name": "node-r3",
+  "name": "node-libr3",
   "version": "0.1.0",
   "description": "a node binding for URL router c9s/r3",
   "main": "build/Release/r3.node",
