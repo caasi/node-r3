@@ -355,16 +355,16 @@ r =
     console.log "#name: #iterations iterations, finished in #sec seconds"
     console.log "#{iterations / sec} i\/sec\n"
 
-count = 50000
+count = 500000
 b \tree-compile
   .reporter r
-  .run count, -> n.compile!
+  .run count, !-> n.compile!
 b \string-dispatch
   .reporter r
-  .run count, -> n.match "/qux/bar/corge"
-b \string-match-route
+  .run count, !-> n.match "/qux/bar/corge"
+b \string-match-entry
   .reporter r
-  .run count, -> m = n.matchRoute e
+  .run count, !-> m = n.match e
 b \PCRE-dispatch
   .reporter r
-  .run count, -> tree2.match "/post/2014/12"
+  .run count, !-> tree2.match "/post/2014/12"

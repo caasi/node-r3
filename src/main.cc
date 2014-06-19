@@ -169,42 +169,30 @@ NAN_METHOD(treeCompile) {
 NAN_METHOD(treeMatch) {
     NanScope();
 
-    Local<Object> self = args.Holder();
+    r3::node *matched = NULL;
 
-    const String::Utf8Value path(args[0]);
+    if (args[0]->IsString()) {
+        const String::Utf8Value path(args[0]);
+        matched = r3::r3_tree_matchl(get_node(args.Holder()), *path, path.length(), NULL);
+        //std::cout << "r3_tree_match(\"" << *path << "\");" << std::endl;
+    } else if (args[0]->IsObject()) {
+        Local<Object> entry = args[0].As<Object>();
 
-    r3::node *matched = r3::r3_tree_matchl(get_node(self), *path, path.length(), NULL);
-    //std::cout << "r3_tree_match(\"" << *path << "\");" << std::endl;
+        // quack! quack!
+        // TODO: create match_entry if entry is a JSON Object
+        if (
+            !entry->HasOwnProperty(NanNew<String>("requestMethod")) ||
+            !entry->HasOwnProperty(NanNew<String>("path")) ||
+            !entry->HasOwnProperty(NanNew<String>("host")) ||
+            !entry->HasOwnProperty(NanNew<String>("remoteAddress"))
+        ) {
+            NanThrowError("Cannot call MatchEntry constructor as function");
+        }
 
-    if (matched) {
-#ifdef NODE_R3_SAVE_RAW
-        Local<Value> data(reinterpret_cast<Value *>(matched->data));
-#else
-        Local<Value> data = NanNew(*reinterpret_cast<Persistent<Value> *>(matched->data));
-#endif
-        NanReturnValue(data);
+        matched = r3::r3_tree_match_entry(get_node(args.Holder()), get_entry(entry));
     } else {
-        NanReturnNull();
+        NanThrowError("Argument should be a string or a MatchEntry");
     }
-}
-
-NAN_METHOD(treeMatchRoute) {
-    NanScope();
-
-    Local<Object> entry = args[0].As<Object>();
-
-    // quack! quack!
-    // TODO: create match_entry if entry is a JSON Object
-    if (
-        !entry->HasOwnProperty(NanNew<String>("requestMethod")) ||
-        !entry->HasOwnProperty(NanNew<String>("path")) ||
-        !entry->HasOwnProperty(NanNew<String>("host")) ||
-        !entry->HasOwnProperty(NanNew<String>("remoteAddress"))
-    ) {
-        NanThrowError("Cannot call MatchEntry constructor as function");
-    }
-
-    r3::route *matched = r3::r3_tree_match_route(get_node(args.Holder()), get_entry(entry));
 
     if (matched) {
 #ifdef NODE_R3_SAVE_RAW
@@ -212,7 +200,7 @@ NAN_METHOD(treeMatchRoute) {
 #else
         Local<Value> data = NanNew(*reinterpret_cast<Persistent<Value> *>(matched->data));
 #endif
-        // FIXME: should I return Route?
+        // FIXME: what should I return?
         NanReturnValue(data);
     } else {
         NanReturnNull();
@@ -243,8 +231,6 @@ NAN_METHOD(treeConstructor) {
                   NanNew<FunctionTemplate>(treeCompile)->GetFunction());
     instance->Set(NanNew<String>("match"),
                   NanNew<FunctionTemplate>(treeMatch)->GetFunction());
-    instance->Set(NanNew<String>("matchRoute"),
-                  NanNew<FunctionTemplate>(treeMatchRoute)->GetFunction());
 
     NanMakeWeakPersistent(instance, n, &treeCleanUp);
 

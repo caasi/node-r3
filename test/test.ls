@@ -31,10 +31,9 @@ f = ->
   path = '/o'
   for from 0 til count
     throw new Error 'path not found' if not n.match "/o"
-    throw new Error 'match entry not found' if not n.matchRoute e
+    throw new Error 'match entry not found' if not n.match e
     path += '/o'
     e.path += '/o'
 
 f!
-gc!
 
