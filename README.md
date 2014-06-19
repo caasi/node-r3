@@ -1,6 +1,6 @@
 # node-r3
 
-node-r3 is a native binding of [c9s/r3][] routing library, please check it for more information.
+node-r3 is a native binding of [c9s/r3](https://github.com/c9s/r3) routing library, please check it for more information.
 
 ## Installation
 
@@ -63,7 +63,7 @@ console.log(n.matchRoute(e));
 
 ## Alternative
 
-There is another [othree/node-r3][] project use different approach to let node can use r3's feature.
+There is another [othree/node-r3](https://github.com/othree/node-r3) project use different approach to let node can use r3's feature.
 
 ## License
 
