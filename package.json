@@ -1,6 +1,6 @@
 {
   "name": "node-r3",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "a node binding for URL router c9s/r3",
   "main": "build/Release/r3.node",
   "scripts": {
