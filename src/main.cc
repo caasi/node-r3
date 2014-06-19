@@ -12,6 +12,7 @@ using namespace v8;
 
 r3::node        *get_node (const Local<Object> &self);
 r3::match_entry *get_entry(const Local<Object> &self);
+r3::match_entry *get_entry_and_check(const Local<Object> &self);
 
 /***
  * About r3 node/tree
@@ -126,7 +127,7 @@ NAN_METHOD(treeInsertRoute) {
             get_node(self),
             method,
             *path, path.length(),
-            ptr_from_value_raw(args[1]),
+            ptr_from_value_raw(args[2]),
             &errstr
         );
 #else
@@ -135,7 +136,7 @@ NAN_METHOD(treeInsertRoute) {
             get_node(self),
             method,
             *path, path.length(),
-            ptr_from_value_persistent(args[1]),
+            ptr_from_value_persistent(args[2]),
             &errstr
         );
 #endif
@@ -176,22 +177,35 @@ NAN_METHOD(treeMatch) {
         matched = r3::r3_tree_matchl(get_node(args.Holder()), *path, path.length(), NULL);
         //std::cout << "r3_tree_match(\"" << *path << "\");" << std::endl;
     } else if (args[0]->IsObject()) {
-        Local<Object> entry = args[0].As<Object>();
-
-        // quack! quack!
-        // TODO: create match_entry if entry is a JSON Object
-        if (
-            !entry->HasOwnProperty(NanNew<String>("requestMethod")) ||
-            !entry->HasOwnProperty(NanNew<String>("path")) ||
-            !entry->HasOwnProperty(NanNew<String>("host")) ||
-            !entry->HasOwnProperty(NanNew<String>("remoteAddress"))
-        ) {
-            NanThrowError("Cannot call MatchEntry constructor as function");
-        }
-
-        matched = r3::r3_tree_match_entry(get_node(args.Holder()), get_entry(entry));
+        Local<Object> obj = args[0].As<Object>();
+        matched = r3::r3_tree_match_entry(get_node(args.Holder()), get_entry_and_check(obj));
     } else {
         NanThrowError("Argument should be a string or a MatchEntry");
+    }
+
+    if (matched) {
+#ifdef NODE_R3_SAVE_RAW
+        Local<Value> data(reinterpret_cast<Value *>(matched->data));
+#else
+        Local<Value> data = NanNew(*reinterpret_cast<Persistent<Value> *>(matched->data));
+#endif
+        // FIXME: what should I return?
+        NanReturnValue(data);
+    } else {
+        NanReturnNull();
+    }
+}
+
+NAN_METHOD(treeMatchRoute) {
+    NanScope();
+
+    r3::route *matched = NULL;
+
+    if (args[0]->IsObject()) {
+        Local<Object> obj = args[0].As<Object>();
+        matched = r3::r3_tree_match_route(get_node(args.Holder()), get_entry_and_check(obj));
+    } else {
+        NanThrowError("Argument should be a MatchEntry");
     }
 
     if (matched) {
@@ -231,6 +245,8 @@ NAN_METHOD(treeConstructor) {
                   NanNew<FunctionTemplate>(treeCompile)->GetFunction());
     instance->Set(NanNew<String>("match"),
                   NanNew<FunctionTemplate>(treeMatch)->GetFunction());
+    instance->Set(NanNew<String>("matchRoute"),
+                  NanNew<FunctionTemplate>(treeMatchRoute)->GetFunction());
 
     NanMakeWeakPersistent(instance, n, &treeCleanUp);
 
@@ -243,6 +259,22 @@ NAN_METHOD(treeConstructor) {
 r3::match_entry *get_entry(const Local<Object> &self) {
     Local<External> external = Local<External>::Cast(self->GetInternalField(0));
     return static_cast<r3::match_entry *>(external->Value());
+}
+
+r3::match_entry *get_entry_and_check(const Local<Object> &obj) {
+    // TODO: create match_entry if entry is a JSON Object
+    if (
+        !obj->InternalFieldCount() == 1 ||
+        !obj->HasOwnProperty(NanNew<String>("requestMethod")) ||
+        !obj->HasOwnProperty(NanNew<String>("path")) ||
+        !obj->HasOwnProperty(NanNew<String>("host")) ||
+        !obj->HasOwnProperty(NanNew<String>("remoteAddress"))
+    ) {
+        NanThrowError("Not a MatchEntry");
+        return NULL;
+    }
+
+    return get_entry(obj);
 }
 
 NAN_GETTER(entryGetMethod) {
@@ -287,6 +319,7 @@ NAN_SETTER(entrySetString) {
     String::Utf8Value p(property);
     String::Utf8Value v(value);
 
+    // FIXME: should check if strndup available
     if (0 == strncmp("path", *p, p.length())) {
         if (e->path) delete e->path;
         e->path = strndup(*v, v.length());
