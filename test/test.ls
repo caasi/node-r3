@@ -41,6 +41,10 @@ describe 'Tree' ->
     it 'should match MatchEntry w/ correct method' ->
       e.requestMethod = r3.METHOD_POST .|. r3.METHOD_DELETE
       expect(n.match e).to.be data
+    # TODO: test errors
+    #it 'should throw error if argument is not a string or MatchEntry' ->
+    #  expect(n.match {}).to.throw "Not a MatchEntry"
+    #  expect(n.match 0).to.throw "Argument should be a string or a MatchEntry"
   describe '#matchRoute()' (,) ->
     it 'should not match MatchEntry w/ wrong request method' ->
       e.requestMethod = r3.METHOD_GET
@@ -48,4 +52,6 @@ describe 'Tree' ->
     it 'should match MatchEntry w/ correct method' ->
       e.requestMethod = r3.METHOD_POST .|. r3.METHOD_DELETE
       expect(n.matchRoute e).to.be data
+    #it 'should throw error if argument is not a MatchEntry' ->
+    #  expect(n.match 0).to.throw "Argument should be a MatchEntry"
 
