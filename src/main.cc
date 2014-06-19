@@ -10,9 +10,9 @@ namespace r3 {
 
 using namespace v8;
 
-r3::node        *get_node (const Local<Object> &self);
-r3::match_entry *get_entry(const Local<Object> &self);
-r3::match_entry *get_entry_and_check(const Local<Object> &self);
+r3::node        *node_from_v8_obj(const Local<Object> &self);
+r3::match_entry *match_entry_from_v8_obj(const Local<Object> &self);
+r3::match_entry *valid_match_entry_from_v8_obj(const Local<Object> &self);
 
 /***
  * About r3 node/tree
@@ -70,7 +70,7 @@ NAN_WEAK_CALLBACK(treeCleanUp) {
     //std::cout << "r3_tree_free();" << std::endl;
 }
 
-r3::node *get_node(const Local<Object> &self) {
+r3::node *node_from_v8_obj(const Local<Object> &self) {
     Local<External> external = Local<External>::Cast(self->GetInternalField(0));
     return static_cast<r3::node *>(external->Value());
 }
@@ -87,7 +87,7 @@ NAN_METHOD(treeInsertPath) {
 #ifdef NODE_R3_SAVE_RAW
     r3::node *result =
         r3::r3_tree_insert_pathl_ex(
-            get_node(self),
+            node_from_v8_obj(self),
             *path, path.length(),
             NULL,
             ptr_from_value_raw(args[1]),
@@ -96,7 +96,7 @@ NAN_METHOD(treeInsertPath) {
 #else
     r3::node *result =
         r3::r3_tree_insert_pathl_ex(
-            get_node(self),
+            node_from_v8_obj(self),
             *path, path.length(),
             NULL,
             ptr_from_value_persistent(args[1]),
@@ -124,7 +124,7 @@ NAN_METHOD(treeInsertRoute) {
 #ifdef NODE_R3_SAVE_RAW
     r3::route *result =
         r3::r3_tree_insert_routel_ex(
-            get_node(self),
+            node_from_v8_obj(self),
             method,
             *path, path.length(),
             ptr_from_value_raw(args[2]),
@@ -133,7 +133,7 @@ NAN_METHOD(treeInsertRoute) {
 #else
     r3::route *result =
         r3::r3_tree_insert_routel_ex(
-            get_node(self),
+            node_from_v8_obj(self),
             method,
             *path, path.length(),
             ptr_from_value_persistent(args[2]),
@@ -157,7 +157,7 @@ NAN_METHOD(treeCompile) {
     Local<Object> self = args.Holder();
 
     char *errstr = NULL;
-    int err = r3::r3_tree_compile(get_node(self), &errstr);
+    int err = r3::r3_tree_compile(node_from_v8_obj(self), &errstr);
     if (err) {
         NanThrowError(errstr);
         delete errstr;
@@ -174,11 +174,18 @@ NAN_METHOD(treeMatch) {
 
     if (args[0]->IsString()) {
         const String::Utf8Value path(args[0]);
-        matched = r3::r3_tree_matchl(get_node(args.Holder()), *path, path.length(), NULL);
+        matched = r3::r3_tree_matchl(
+            node_from_v8_obj(args.Holder()),
+            *path, path.length(),
+            NULL
+        );
         //std::cout << "r3_tree_match(\"" << *path << "\");" << std::endl;
     } else if (args[0]->IsObject()) {
         Local<Object> obj = args[0].As<Object>();
-        matched = r3::r3_tree_match_entry(get_node(args.Holder()), get_entry_and_check(obj));
+        matched = r3::r3_tree_match_entry(
+            node_from_v8_obj(args.Holder()),
+            valid_match_entry_from_v8_obj(obj)
+        );
     } else {
         NanThrowError("Argument should be a string or a MatchEntry");
     }
@@ -203,7 +210,10 @@ NAN_METHOD(treeMatchRoute) {
 
     if (args[0]->IsObject()) {
         Local<Object> obj = args[0].As<Object>();
-        matched = r3::r3_tree_match_route(get_node(args.Holder()), get_entry_and_check(obj));
+        matched = r3::r3_tree_match_route(
+            node_from_v8_obj(args.Holder()),
+            valid_match_entry_from_v8_obj(obj)
+        );
     } else {
         NanThrowError("Argument should be a MatchEntry");
     }
@@ -256,12 +266,12 @@ NAN_METHOD(treeConstructor) {
 /***
  * About MatchEntry
  */
-r3::match_entry *get_entry(const Local<Object> &self) {
+r3::match_entry *match_entry_from_v8_obj(const Local<Object> &self) {
     Local<External> external = Local<External>::Cast(self->GetInternalField(0));
     return static_cast<r3::match_entry *>(external->Value());
 }
 
-r3::match_entry *get_entry_and_check(const Local<Object> &obj) {
+r3::match_entry *valid_match_entry_from_v8_obj(const Local<Object> &obj) {
     // TODO: create match_entry if entry is a JSON Object
     if (
         !obj->InternalFieldCount() == 1 ||
@@ -274,13 +284,13 @@ r3::match_entry *get_entry_and_check(const Local<Object> &obj) {
         return NULL;
     }
 
-    return get_entry(obj);
+    return match_entry_from_v8_obj(obj);
 }
 
 NAN_GETTER(entryGetMethod) {
     NanScope();
 
-    r3::match_entry *e = get_entry(args.Holder());
+    r3::match_entry *e = match_entry_from_v8_obj(args.Holder());
 
     NanReturnValue(NanNew<Integer>(e->request_method));
 }
@@ -288,14 +298,14 @@ NAN_GETTER(entryGetMethod) {
 NAN_SETTER(entrySetMethod) {
     NanScope();
 
-    r3::match_entry *e = get_entry(args.Holder());
+    r3::match_entry *e = match_entry_from_v8_obj(args.Holder());
     e->request_method = value->ToInteger()->Value();
 }
 
 NAN_GETTER(entryGetString) {
     NanScope();
 
-    r3::match_entry *e = get_entry(args.Holder());
+    r3::match_entry *e = match_entry_from_v8_obj(args.Holder());
 
     String::Utf8Value p(property);
 
@@ -315,7 +325,7 @@ NAN_SETTER(entrySetString) {
 
     Local<Object> self = args.Holder();
 
-    r3::match_entry *e = get_entry(self);
+    r3::match_entry *e = match_entry_from_v8_obj(self);
     String::Utf8Value p(property);
     String::Utf8Value v(value);
 
