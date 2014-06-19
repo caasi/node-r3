@@ -318,6 +318,9 @@ NAN_GETTER(entryGetString) {
     if (0 == strncmp("remoteAddress", *p, p.length())) {
         NanReturnValue(NanNew<String>(e->remote_addr, e->remote_addr_len));
     }
+
+    //should not happen
+    NanReturnNull();
 }
 
 NAN_SETTER(entrySetString) {
